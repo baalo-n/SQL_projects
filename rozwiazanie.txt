@@ -1,0 +1,33 @@
+
+SELECT podzbior_3.*
+FROM(
+--dało by się to zakończyć już tutaj, ale dla ,,skomplikowania kodu,, zagnieżdżę to jeszczę bardziej i dodatkowo użyłem funkcji CASE żeby było różnorodność
+SELECT podzbior_2.*,
+CASE WHEN podzbior_2.height BETWEEN podzbior_2.lcl AND podzbior_2.ucl THEN FALSE 
+ELSE TRUE
+END AS alert
+
+from (
+
+SELECT podzbior_1.*,
+	   avg_height+3*(stddev_height/sqrt(5)) as ucl,
+	   avg_height-3*(stddev_height/sqrt(5)) as lcl
+FROM
+(SELECT
+	operator,
+	ROW_NUMBER() OVER w AS row_number, 
+	height, 
+	AVG(height) OVER w AS avg_height, 
+	STDDEV(height) OVER w AS stddev_height
+FROM manufacturing_parts 
+WINDOW w AS (
+	PARTITION BY operator 
+	ORDER BY item_no 
+	ROWS BETWEEN 4 PRECEDING AND CURRENT ROW)) AS podzbior_1
+) as podzbior_2
+) as podzbior_3
+WHERE 
+	ucl IS NOT NULL AND lcl IS NOT NULL
+	AND
+	podzbior_3.row_number >=5
+;
